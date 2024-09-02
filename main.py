@@ -22,7 +22,7 @@ def printToConsole(text, color):
 
 
 
-url = 'https://yakkastrength.co.uk/'
+url = 'https://www.sportsdirect.com/'
 #Mapping
 uniqueURLs = initMapping(url)
 
@@ -44,10 +44,10 @@ else:
     print(focusMap[0], 'focus map 0')
     #Bypass
     imgFileResult = bypass(focusMap[0])
-    print(f'https://mfraljoybtduzwhprbcp.supabase.co/storage/v1/object/public/Images/{imgFileResult}')
+    print(f'https://mfraljoybtduzwhprbcp.supabase.co/storage/v1/object/public/TE/{imgFileResult}')
     #pull first product listing text
-    time.sleep(9)
-    listingText = pullFirstListing(f'https://mfraljoybtduzwhprbcp.supabase.co/storage/v1/object/public/Images/{imgFileResult}')
+    time.sleep(11)
+    listingText = pullFirstListing(f'https://mfraljoybtduzwhprbcp.supabase.co/storage/v1/object/public/TE/{imgFileResult}')
     printToConsole('PULLED LISTING TEXT WORKED', Fore.GREEN)
     print(listingText)
     outerHTML = getDiv(focusMap[0], listingText)

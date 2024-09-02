@@ -11,7 +11,7 @@ def findCollectionsURLs(siteURLs):
 
   {urls_string}
 
-  which url signals a product listing or collection page? If a gender url or kids url is available then you can return multiple.  Otherwise just one. Return your answer as an array of answers. the answer cannot contain the word product or products in it.  item.url, curly bracket syntax is not allowed either. Nothing else in the answer please.
+  which url signals collection page? It should look something like this, https://www.sportsdirect.com/mens/footwear/trainers. Dont allow gender or kids pages. ideally the more deep the params in the url the better. mens/footwear/trainers is better than mens/footwear/ .Return your answer as an array of answers. the answer cannot contain the word product or products in it.  item.url, curly bracket syntax is not allowed either. Nothing else in the answer please.
   '''
 
   response = client.chat.completions.create(

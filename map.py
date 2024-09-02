@@ -1,74 +1,56 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from urllib.parse import urljoin
 
-def get_links(url):
+def setup_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.binary_location = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+    service = Service(executable_path="/opt/homebrew/bin/chromedriver")
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    return driver
+
+
+def get_links(driver, url):
     try:
-        response = requests.get(url, timeout=5)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        return [urljoin(url, link.get('href')) for link in soup.find_all('a') if link.get('href')]
-    except requests.RequestException as e:
+        driver.get(url)
+        # Wait for the page to load
+        driver.implicitly_wait(5)
+
+        # Find all anchor tags and extract their href attributes
+        links = [urljoin(url, elem.get_attribute('href')) for elem in driver.find_elements(By.TAG_NAME, 'a') if elem.get_attribute('href')]
+        return links
+    except Exception as e:
         print(f"Error fetching {url}: {e}")
         return []
 
-def is_valid(url, base_url):
-    parsed = urlparse(url)
-    return bool(parsed.netloc) and parsed.netloc == urlparse(base_url).netloc
+def crawl_single_page(base_url, max_links=150):
+    driver = setup_driver()
 
-def extract_base_path(url):
-    parsed = urlparse(url)
-    return f"{parsed.scheme}://{parsed.netloc}" + "/".join(parsed.path.split('/')[:2])
+    try:
+        links = get_links(driver, base_url)
+        # Limit the number of URLs to max_links
+        if len(links) > max_links:
+            print(f"More than {max_links} URLs found. Returning first {max_links} URLs.")
+            links = links[:max_links]
+        else:
+            print(f"Found {len(links)} URLs.")
+    finally:
+        driver.quit()
 
-def crawl(base_url, timeout=180, max_duplicate_ratio=0.95, max_workers=20, max_urls=75):
-    visited = set()
-    to_visit = [base_url]
-    unique_urls = set()
-
-    start_time = time.time()
-    last_found_time = start_time
-    total_urls_processed = 0
-    duplicate_count = 0
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        while to_visit and len(visited) < max_urls:
-            current_time = time.time()
-            if current_time - last_found_time > timeout:
-                print(f"Timeout reached. Ending crawl after {timeout} seconds of inactivity.")
-                break
-
-            futures = {executor.submit(get_links, url): url for url in to_visit[:max_workers]}
-            to_visit = to_visit[max_workers:]
-
-            for future in as_completed(futures):
-                current_url = futures[future]
-                total_urls_processed += 1
-
-                if len(visited) >= max_urls:
-                    print(f"Reached the maximum number of {max_urls} visited URLs. Ending crawl.")
-                    break
-
-                if current_url in visited:
-                    duplicate_count += 1
-                else:
-                    visited.add(current_url)
-                    if is_valid(current_url, base_url):
-                        links = future.result()
-                        base_path = extract_base_path(current_url)
-                        unique_urls.add(base_path)
-                        last_found_time = current_time  # Reset the timer when a valid URL is found
-                        for link in links:
-                            if link not in visited:
-                                to_visit.append(link)
-
-                if total_urls_processed > 0 and (duplicate_count / total_urls_processed) >= max_duplicate_ratio:
-                    print(f"Duplicate URL ratio reached {max_duplicate_ratio * 100}%. Ending crawl.")
-                    break
-
-    return unique_urls
+    return links
 
 def initMapping(base_url):
     print(f"Starting crawl for {base_url}...")
-    urls = crawl(base_url)
+    urls = crawl_single_page(base_url)
+    # Write to map.txt
+    with open("map.txt", "w") as f:
+        for url in urls:
+            f.write(url + "\n")
     return urls
+
